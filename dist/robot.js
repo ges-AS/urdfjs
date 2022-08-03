@@ -1,9 +1,10 @@
 import { mat3, mat4, quat, vec3 } from "gl-matrix";
 import { get_package_name, parse_xml } from "./raw";
-export function parse_urdf(urdf, package_url) {
-    return parse_raw_json(parse_xml(urdf), package_url);
+export function parse_urdf(urdf, parse_option) {
+    let _parse_option = parse_option || { use_matrix: false };
+    return parse_raw_json(parse_xml(urdf), _parse_option.use_matrix, _parse_option.package_replace_url);
 }
-export function parse_raw_json(json, urdf_package_url) {
+export function parse_raw_json(json, use_matrix, urdf_package_url) {
     let res = {
         name: json.robot._attributes.name,
         links: [],
@@ -11,15 +12,15 @@ export function parse_raw_json(json, urdf_package_url) {
     };
     for (let i = 0; i < json.robot.link.length; i++) {
         const raw_link = json.robot.link[i];
-        res.links.push(parse_link(raw_link, urdf_package_url));
+        res.links.push(parse_link(raw_link, use_matrix, urdf_package_url));
     }
     for (let i = 0; i < json.robot.joint.length; i++) {
         const raw_joint = json.robot.joint[i];
-        res.joints.push(parse_joint(raw_joint));
+        res.joints.push(parse_joint(raw_joint, use_matrix));
     }
     return res;
 }
-function parse_link(raw_link, urdf_package_url) {
+function parse_link(raw_link, use_matrix, urdf_package_url) {
     let l = {
         name: raw_link._attributes.name,
     };
@@ -33,7 +34,7 @@ function parse_link(raw_link, urdf_package_url) {
         l.inertial.mass = Number(raw_link.inertial.mass._attributes.value);
         // origin
         if (raw_link.inertial.origin) {
-            l.inertial.origin = parse_origin(raw_link.inertial.origin);
+            l.inertial.origin = parse_origin(raw_link.inertial.origin, use_matrix);
         }
         // inertia
         let ixx = Number(raw_link.inertial.inertia._attributes.ixx);
@@ -57,7 +58,7 @@ function parse_link(raw_link, urdf_package_url) {
         }
         // origin
         if (raw_link.visual.origin) {
-            l.visual.origin = parse_origin(raw_link.visual.origin);
+            l.visual.origin = parse_origin(raw_link.visual.origin, use_matrix);
         }
         // geometry
         l.visual.geometry = parse_geometry(raw_link.visual.geometry, urdf_package_url);
@@ -87,7 +88,7 @@ function parse_link(raw_link, urdf_package_url) {
         };
         // origin
         if (raw_link.collision.origin) {
-            l.collision.origin = parse_origin(raw_link.collision.origin);
+            l.collision.origin = parse_origin(raw_link.collision.origin, use_matrix);
         }
         // name
         if (raw_link.collision._attributes) {
@@ -133,21 +134,33 @@ function parse_geometry(raw_geomtry, package_url) {
     }
 }
 function parse_filename(filename, package_url) {
-    return filename.replace("package://" + get_package_name(package_url), package_url);
+    if (package_url) {
+        return filename.replace("package://" + get_package_name(package_url), package_url);
+    }
+    else {
+        return filename;
+    }
 }
-function parse_origin(origin) {
-    let out = mat4.create();
+function parse_origin(origin, use_matrix = false) {
     let rpy = origin._attributes.rpy.split(" ").map(s => Number(s));
     let xyz = origin._attributes.xyz.split(" ").map(s => Number(s));
-    xyz_rpy_to_mat4(out, xyz, rpy);
-    return out;
+    if (use_matrix) {
+        let out = mat4.create();
+        xyz_rpy_to_mat4(out, xyz, rpy);
+        return out;
+    }
+    else {
+        return {
+            xyz, rpy
+        };
+    }
 }
 function xyz_rpy_to_mat4(out, xyz, rpy) {
     let q = quat.create();
     quat.fromEuler(q, rpy[0], rpy[1], rpy[2]);
     mat4.fromRotationTranslation(out, q, vec3.fromValues(xyz[0], xyz[1], xyz[2]));
 }
-function parse_joint(raw_joint) {
+function parse_joint(raw_joint, use_matrix) {
     let j = {
         name: raw_joint._attributes.name,
         type: raw_joint._attributes.type,
@@ -167,7 +180,7 @@ function parse_joint(raw_joint) {
         }
     };
     if (raw_joint.origin) {
-        j.origin = parse_origin(raw_joint.origin);
+        j.origin = parse_origin(raw_joint.origin, use_matrix);
     }
     if (raw_joint.axis) {
         j.axis = raw_joint.axis._attributes.xyz.split(" ").map(s => Number(s));

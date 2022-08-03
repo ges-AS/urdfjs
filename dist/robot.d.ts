@@ -1,7 +1,11 @@
 import { mat3, mat4 } from "gl-matrix";
 import { raw_json } from "./raw";
-export declare function parse_urdf(urdf: string, package_url: string): Robot;
-export declare function parse_raw_json(json: raw_json, urdf_package_url: string): Robot;
+export interface parse_option {
+    package_replace_url?: "";
+    use_matrix: boolean;
+}
+export declare function parse_urdf(urdf: string, parse_option?: parse_option): Robot;
+export declare function parse_raw_json(json: raw_json, use_matrix: boolean, urdf_package_url?: string): Robot;
 export interface Robot {
     name: string;
     links: Link[];
@@ -10,13 +14,19 @@ export interface Robot {
 export interface Link {
     name: string;
     inertial?: {
-        origin: mat4;
+        origin: mat4 | {
+            xyz: number[];
+            rpy: number[];
+        };
         mass: number;
         inertia: mat3;
     };
     visual?: {
         name?: string;
-        origin: mat4;
+        origin: mat4 | {
+            xyz: number[];
+            rpy: number[];
+        };
         geometry: box | cylinder | sphere | mesh;
         material?: {
             name: string;
@@ -30,7 +40,10 @@ export interface Link {
     };
     collision?: {
         name?: string;
-        origin: mat4;
+        origin: mat4 | {
+            xyz: number[];
+            rpy: number[];
+        };
         geometry: box | cylinder | sphere | mesh;
     };
 }
@@ -51,7 +64,10 @@ export interface mesh {
 export interface Joint {
     name: string;
     type: "revolute" | "continuous" | "prismatic" | "fixed" | "floating" | "planar";
-    origin: mat4;
+    origin: mat4 | {
+        xyz: number[];
+        rpy: number[];
+    };
     parent: string;
     child: string;
     axis: number[];

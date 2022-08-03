@@ -6,6 +6,6 @@ let robot = parse_urdf(urdf_string);
 ```
 ### install
 ```
-npm i https://github.com/ges-AS/urdfjs
+npm i https://github.com/ges-AS/urdfjs.git
 ```
 

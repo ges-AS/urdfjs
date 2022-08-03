@@ -1,11 +1,17 @@
 import { mat3, mat4, quat, vec3 } from "gl-matrix";
 import { get_package_name, raw_json, raw_link, raw_joint, raw_geomtry, parse_xml } from "./raw"
 
-export function parse_urdf(urdf: string, package_url: string): Robot {
-    return parse_raw_json(parse_xml(urdf), package_url);
+export interface parse_option {
+    package_replace_url?: ""
+    use_matrix: boolean
 }
 
-export function parse_raw_json(json: raw_json, urdf_package_url: string): Robot {
+export function parse_urdf(urdf: string, parse_option?: parse_option): Robot {
+    let _parse_option = parse_option || { use_matrix: false };
+    return parse_raw_json(parse_xml(urdf), _parse_option.use_matrix, _parse_option.package_replace_url);
+}
+
+export function parse_raw_json(json: raw_json, use_matrix: boolean, urdf_package_url?: string): Robot {
     let res: Robot = {
         name: json.robot._attributes.name,
         links: [],
@@ -14,16 +20,16 @@ export function parse_raw_json(json: raw_json, urdf_package_url: string): Robot 
 
     for (let i = 0; i < json.robot.link.length; i++) {
         const raw_link = json.robot.link[i];
-        res.links.push(parse_link(raw_link, urdf_package_url));
+        res.links.push(parse_link(raw_link, use_matrix, urdf_package_url));
     }
     for (let i = 0; i < json.robot.joint.length; i++) {
         const raw_joint = json.robot.joint[i];
-        res.joints.push(parse_joint(raw_joint));
+        res.joints.push(parse_joint(raw_joint, use_matrix));
     }
     return res
 }
 
-function parse_link(raw_link: raw_link, urdf_package_url: string): Link {
+function parse_link(raw_link: raw_link, use_matrix: boolean, urdf_package_url?: string): Link {
     let l: Link = {
         name: raw_link._attributes.name,
     }
@@ -38,7 +44,7 @@ function parse_link(raw_link: raw_link, urdf_package_url: string): Link {
 
         // origin
         if (raw_link.inertial.origin) {
-            l.inertial.origin = parse_origin(raw_link.inertial.origin)
+            l.inertial.origin = parse_origin(raw_link.inertial.origin, use_matrix)
         }
 
         // inertia
@@ -64,7 +70,7 @@ function parse_link(raw_link: raw_link, urdf_package_url: string): Link {
 
         // origin
         if (raw_link.visual.origin) {
-            l.visual.origin = parse_origin(raw_link.visual.origin);
+            l.visual.origin = parse_origin(raw_link.visual.origin, use_matrix);
         }
         // geometry
         l.visual.geometry = parse_geometry(raw_link.visual.geometry, urdf_package_url);
@@ -96,7 +102,7 @@ function parse_link(raw_link: raw_link, urdf_package_url: string): Link {
         }
         // origin
         if (raw_link.collision.origin) {
-            l.collision.origin = parse_origin(raw_link.collision.origin);
+            l.collision.origin = parse_origin(raw_link.collision.origin, use_matrix);
         }
         // name
         if (raw_link.collision._attributes) {
@@ -108,7 +114,7 @@ function parse_link(raw_link: raw_link, urdf_package_url: string): Link {
     return l;
 }
 
-function parse_geometry(raw_geomtry: raw_geomtry, package_url: string): box | cylinder | sphere | mesh {
+function parse_geometry(raw_geomtry: raw_geomtry, package_url?: string): box | cylinder | sphere | mesh {
     // let 
     if (raw_geomtry.box) {
         return {
@@ -139,16 +145,26 @@ function parse_geometry(raw_geomtry: raw_geomtry, package_url: string): box | cy
     }
 }
 
-function parse_filename(filename: string, package_url: string) {
-    return filename.replace("package://" + get_package_name(package_url), package_url)
+function parse_filename(filename: string, package_url?: string) {
+    if (package_url) {
+        return filename.replace("package://" + get_package_name(package_url), package_url)
+    } else {
+        return filename
+    }
 }
 
-function parse_origin(origin: { _attributes: { rpy: string, xyz: string } }) {
-    let out = mat4.create();
+function parse_origin(origin: { _attributes: { rpy: string, xyz: string } }, use_matrix: boolean = false) {
     let rpy = origin._attributes.rpy.split(" ").map(s => Number(s));
     let xyz = origin._attributes.xyz.split(" ").map(s => Number(s));
-    xyz_rpy_to_mat4(out, xyz, rpy);
-    return out;
+    if (use_matrix) {
+        let out = mat4.create();
+        xyz_rpy_to_mat4(out, xyz, rpy);
+        return out
+    } else {
+        return {
+            xyz, rpy
+        }
+    }
 }
 
 function xyz_rpy_to_mat4(out: mat4, xyz: number[], rpy: number[]) {
@@ -157,7 +173,7 @@ function xyz_rpy_to_mat4(out: mat4, xyz: number[], rpy: number[]) {
     mat4.fromRotationTranslation(out, q, vec3.fromValues(xyz[0], xyz[1], xyz[2]));
 }
 
-function parse_joint(raw_joint: raw_joint): Joint {
+function parse_joint(raw_joint: raw_joint, use_matrix: boolean): Joint {
     let j: Joint = {
         name: raw_joint._attributes.name,
         type: raw_joint._attributes.type,
@@ -177,7 +193,7 @@ function parse_joint(raw_joint: raw_joint): Joint {
         }
     }
     if (raw_joint.origin) {
-        j.origin = parse_origin(raw_joint.origin);
+        j.origin = parse_origin(raw_joint.origin, use_matrix);
     }
     if (raw_joint.axis) {
         j.axis = raw_joint.axis._attributes.xyz.split(" ").map(s => Number(s));
@@ -228,13 +244,13 @@ export interface Robot {
 export interface Link {
     name: string
     inertial?: {
-        origin: mat4
+        origin: mat4 | { xyz: number[], rpy: number[] }
         mass: number
         inertia: mat3
     }
     visual?: {
         name?: string
-        origin: mat4
+        origin: mat4 | { xyz: number[], rpy: number[] }
         geometry: box | cylinder | sphere | mesh
         material?: {
             name: string
@@ -248,7 +264,7 @@ export interface Link {
     }
     collision?: {
         name?: string
-        origin: mat4
+        origin: mat4 | { xyz: number[], rpy: number[] }
         geometry: box | cylinder | sphere | mesh
     }
 }
@@ -273,7 +289,7 @@ export interface mesh {
 export interface Joint {
     name: string
     type: "revolute" | "continuous" | "prismatic" | "fixed" | "floating" | "planar"
-    origin: mat4
+    origin: mat4 | { xyz: number[], rpy: number[] }
     parent: string
     child: string
     // (x,y,z) default to be 1 0 0

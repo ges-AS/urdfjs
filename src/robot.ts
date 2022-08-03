@@ -35,7 +35,7 @@ function parse_link(raw_link: raw_link, use_matrix: boolean, urdf_package_url?: 
     }
     if (raw_link.inertial) {
         l.inertial = {
-            origin: mat4.create(),
+            origin: use_matrix ? mat4.create() : { xyz: [0, 0, 0], rpy: [0, 0, 0] },
             mass: 0,
             inertia: mat3.create()
         }
@@ -58,7 +58,7 @@ function parse_link(raw_link: raw_link, use_matrix: boolean, urdf_package_url?: 
     }
     if (raw_link.visual) {
         l.visual = {
-            origin: mat4.create(),
+            origin: use_matrix ? mat4.create() : { xyz: [0, 0, 0], rpy: [0, 0, 0] },
             geometry: {
                 radius: 0
             }
@@ -95,7 +95,7 @@ function parse_link(raw_link: raw_link, use_matrix: boolean, urdf_package_url?: 
     }
     if (raw_link.collision) {
         l.collision = {
-            origin: mat4.create(),
+            origin: use_matrix ? mat4.create() : { xyz: [0, 0, 0], rpy: [0, 0, 0] },
             geometry: {
                 radius: 0
             }

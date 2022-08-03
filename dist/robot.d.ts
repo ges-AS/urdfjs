@@ -1,8 +1,8 @@
 import { mat3, mat4 } from "gl-matrix";
 import { raw_json } from "./raw";
 export interface parse_option {
-    package_replace_url?: "";
-    use_matrix: boolean;
+    package_replace_url?: string;
+    use_matrix?: boolean;
 }
 export declare function parse_urdf(urdf: string, parse_option?: parse_option): Robot;
 export declare function parse_raw_json(json: raw_json, use_matrix: boolean, urdf_package_url?: string): Robot;

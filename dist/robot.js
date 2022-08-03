@@ -1,8 +1,8 @@
 import { mat3, mat4, quat, vec3 } from "gl-matrix";
 import { get_package_name, parse_xml } from "./raw";
 export function parse_urdf(urdf, parse_option) {
-    let _parse_option = parse_option || { use_matrix: false };
-    return parse_raw_json(parse_xml(urdf), _parse_option.use_matrix, _parse_option.package_replace_url);
+    let _parse_option = parse_option || {};
+    return parse_raw_json(parse_xml(urdf), _parse_option.use_matrix || false, _parse_option.package_replace_url);
 }
 export function parse_raw_json(json, use_matrix, urdf_package_url) {
     let res = {

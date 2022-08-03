@@ -2,13 +2,13 @@ import { mat3, mat4, quat, vec3 } from "gl-matrix";
 import { get_package_name, raw_json, raw_link, raw_joint, raw_geomtry, parse_xml } from "./raw"
 
 export interface parse_option {
-    package_replace_url?: ""
-    use_matrix: boolean
+    package_replace_url?: string
+    use_matrix?: boolean
 }
 
 export function parse_urdf(urdf: string, parse_option?: parse_option): Robot {
-    let _parse_option = parse_option || { use_matrix: false };
-    return parse_raw_json(parse_xml(urdf), _parse_option.use_matrix, _parse_option.package_replace_url);
+    let _parse_option = parse_option || {};
+    return parse_raw_json(parse_xml(urdf), _parse_option.use_matrix || false, _parse_option.package_replace_url);
 }
 
 export function parse_raw_json(json: raw_json, use_matrix: boolean, urdf_package_url?: string): Robot {
